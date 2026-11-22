@@ -1,0 +1,25 @@
+name: Run bot
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: Сколько минут держать бота включённым (макс. 350)
+        default: "340"
+# Новый запуск заменяет старый, иначе Telegram вернёт ошибку 409 (два опроса сразу)
+concurrency:
+  group: qcup-bot
+  cancel-in-progress: true
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node bot.mjs
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          WEBAPP_URL: ${{ vars.WEBAPP_URL }}
+          MAX_MINUTES: ${{ inputs.minutes }}
