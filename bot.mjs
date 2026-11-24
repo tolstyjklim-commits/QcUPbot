@@ -33,7 +33,16 @@ console.log(`@${me.username} запущен на ${maxMin} мин.`)
 
 const deadline = Date.now() + maxMin * 60_000
 let offset = 0
-while (Date.now() < deadline) {
+let stopping = false
+// GitHub останавливает старый запуск, когда стартует новый: подтверждаем прочитанные сообщения, чтобы /start не пришёл дважды
+const bye = async () => {
+  if (stopping) return
+  stopping = true
+  try { await call('getUpdates', { offset, timeout: 0 }) } catch {}
+  process.exit(0)
+}
+process.on('SIGTERM', bye); process.on('SIGINT', bye)
+while (Date.now() < deadline && !stopping) {
   try {
     const ups = await call('getUpdates', { offset, timeout: 25, allowed_updates: ['message'] })
     for (const u of ups) {
@@ -43,8 +52,9 @@ while (Date.now() < deadline) {
         greet(m.chat.id).catch(e => console.warn('send:', e.message))
     }
   } catch (e) {
+    if (/Conflict/i.test(e.message)) console.warn('poll: этот же бот запущен ещё где-то (локально или второй workflow). Останови лишний.')
     console.warn('poll:', e.message)
     await new Promise(r => setTimeout(r, 5000))
   }
 }
-console.log('Время вышло, бот остановлен. Запусти workflow снова.')
+console.log('Время вышло, бот остановлен. Новый запуск подхватит расписание или кнопка Run workflow.')
